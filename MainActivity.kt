@@ -87,7 +87,10 @@ class MainActivity : Activity(), SensorEventListener {
             gravity = Gravity.CENTER
             setPadding(8, 12, 8, 0)
         }, LinearLayout.LayoutParams(-1, -2))
-        setContentView(root)
+       setContentView(ScrollView(this).apply {
+            isFillViewport = true
+            addView(root)
+        })
     }
 
     private fun angleText(label: String) = TextView(this).apply {
