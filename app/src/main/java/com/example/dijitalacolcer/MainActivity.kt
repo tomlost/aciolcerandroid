@@ -14,93 +14,122 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.widget.*
 import kotlin.math.min
 
 class MainActivity : Activity(), SensorEventListener {
+
     private lateinit var sm: SensorManager
     private var rotationSensor: Sensor? = null
-    private lateinit var pitchText: TextView
-    private lateinit var rollText: TextView
+
+    private lateinit var pitchValue: TextView
+    private lateinit var rollValue: TextView
     private lateinit var statusText: TextView
     private lateinit var level: LevelView
+
     private var pitch = 0f
     private var roll = 0f
     private var pitchZero = 0f
     private var rollZero = 0f
 
+    private fun dp(v: Int): Int =
+        (v * resources.displayMetrics.density).toInt()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        window.statusBarColor = Color.rgb(16, 24, 32)
+        window.navigationBarColor = Color.rgb(16, 24, 32)
+
         sm = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         rotationSensor = sm.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(22, 20, 22, 16)
+            setPadding(dp(20), dp(15), dp(20), dp(15))
             setBackgroundColor(Color.rgb(16, 24, 32))
         }
 
         root.addView(TextView(this).apply {
             text = "DİJİTAL AÇI ÖLÇER"
-            textSize = 24f
+            textSize = 23f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE)
             gravity = Gravity.CENTER
-        }, LinearLayout.LayoutParams(-1, 60))
+        }, LinearLayout.LayoutParams(-1, dp(55)))
 
         statusText = TextView(this).apply {
             text = if (rotationSensor == null)
-                "Bu telefonda dönüş sensörü bulunamadı."
-            else "Telefonu ölçmek istediğin yüzeye yerleştir."
+                "Sensör bulunamadı"
+            else
+                "Canlı açı ölçümü"
             textSize = 14f
             setTextColor(Color.LTGRAY)
             gravity = Gravity.CENTER
         }
-        root.addView(statusText, LinearLayout.LayoutParams(-1, 42))
 
-        pitchText = angleText("EĞİM / ÖN-ARKA")
-        rollText = angleText("EĞİM / SAĞ-SOL")
-        root.addView(pitchText, LinearLayout.LayoutParams(-1, 82))
-        root.addView(rollText, LinearLayout.LayoutParams(-1, 82))
+        root.addView(statusText, LinearLayout.LayoutParams(-1, dp(35)))
+
+        // Ön-arka açı
+        root.addView(TextView(this).apply {
+            text = "ÖN – ARKA AÇISI"
+            textSize = 16f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(244, 180, 0))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(35)))
+
+        pitchValue = numberText()
+        root.addView(pitchValue, LinearLayout.LayoutParams(-1, dp(75)))
+
+        // Sağ-sol açı
+        root.addView(TextView(this).apply {
+            text = "SAĞ – SOL AÇISI"
+            textSize = 16f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(Color.rgb(244, 180, 0))
+            gravity = Gravity.CENTER
+        }, LinearLayout.LayoutParams(-1, dp(35)))
+
+        rollValue = numberText()
+        root.addView(rollValue, LinearLayout.LayoutParams(-1, dp(75)))
 
         level = LevelView(this)
-        root.addView(level, LinearLayout.LayoutParams(270, 270).apply {
+        root.addView(level, LinearLayout.LayoutParams(dp(180), dp(180)).apply {
             gravity = Gravity.CENTER
-            topMargin = 8
-            bottomMargin = 12
+            topMargin = dp(8)
+            bottomMargin = dp(12)
         })
 
         root.addView(Button(this).apply {
-            text = "BU KONUMU 0° KABUL ET"
-            textSize = 16f
+            text = "SIFIRLA  (0°)"
+            textSize = 17f
             setOnClickListener {
                 pitchZero = pitch
                 rollZero = roll
                 updateReadout()
-                statusText.text = "Sıfır noktası ayarlandı."
+                statusText.text = "Sıfır noktası ayarlandı"
             }
-        }, LinearLayout.LayoutParams(-1, 58))
+        }, LinearLayout.LayoutParams(-1, dp(55)))
 
         root.addView(TextView(this).apply {
-            text = "Telefonu yüzeye düz yatır. Ön-arka ve sağ-sol eğimleri ayrı ayrı gösterilir. Sıfırlama, mevcut konumu referans alır."
+            text = "Telefonu ölçmek istediğin yüzeye yerleştir."
             textSize = 13f
             setTextColor(Color.LTGRAY)
             gravity = Gravity.CENTER
-            setPadding(8, 12, 8, 0)
-        }, LinearLayout.LayoutParams(-1, -2))
+        }, LinearLayout.LayoutParams(-1, dp(45)))
 
         setContentView(root)
     }
 
-    private fun angleText(label: String) = TextView(this).apply {
-        text = "$label\n0,00°"
-        textSize = 23f
-        typeface = Typeface.DEFAULT_BOLD
+    private fun numberText() = TextView(this).apply {
+        text = "0,00°"
+        textSize = 42f
+        typeface = Typeface.create("sans-serif", Typeface.BOLD)
         setTextColor(Color.WHITE)
         gravity = Gravity.CENTER
+        includeFontPadding = false
     }
 
     override fun onResume() {
@@ -117,28 +146,34 @@ class MainActivity : Activity(), SensorEventListener {
 
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
+
         val matrix = FloatArray(9)
         val orientation = FloatArray(3)
+
         SensorManager.getRotationMatrixFromVector(matrix, event.values)
         SensorManager.getOrientation(matrix, orientation)
+
         pitch = Math.toDegrees(orientation[1].toDouble()).toFloat()
         roll = Math.toDegrees(orientation[2].toDouble()).toFloat()
+
         updateReadout()
     }
 
     private fun updateReadout() {
         val p = wrap180(pitch - pitchZero)
         val r = wrap180(roll - rollZero)
-        pitchText.text = "EĞİM / ÖN-ARKA\n${fmt(p)}"
-        rollText.text = "EĞİM / SAĞ-SOL\n${fmt(r)}"
+
+        pitchValue.text = formatAngle(p)
+        rollValue.text = formatAngle(r)
+
         level.setAngles(p, r)
     }
 
-    private fun fmt(v: Float): String =
+    private fun formatAngle(v: Float): String =
         String.format(java.util.Locale("tr", "TR"), "%.2f°", v)
 
-    private fun wrap180(v0: Float): Float {
-        var v = v0
+    private fun wrap180(value: Float): Float {
+        var v = value
         while (v > 180f) v -= 360f
         while (v < -180f) v += 360f
         return v
@@ -149,20 +184,23 @@ class MainActivity : Activity(), SensorEventListener {
             SensorManager.SENSOR_STATUS_ACCURACY_HIGH -> "Sensör doğruluğu: yüksek"
             SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM -> "Sensör doğruluğu: orta"
             SensorManager.SENSOR_STATUS_ACCURACY_LOW -> "Sensör doğruluğu: düşük"
-            else -> "Sensör kalibrasyonu kontrol edilmeli."
+            else -> "Canlı açı ölçümü"
         }
     }
 
     private class LevelView(context: Context) : View(context) {
+
         private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.LTGRAY
             strokeWidth = 3f
             style = Paint.Style.STROKE
         }
+
         private val yellow = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(244, 180, 0)
             style = Paint.Style.FILL
         }
+
         private var p = 0f
         private var r = 0f
 
@@ -176,13 +214,16 @@ class MainActivity : Activity(), SensorEventListener {
             val cx = width / 2f
             val cy = height / 2f
             val rad = min(width, height) * 0.40f
+
             canvas.drawCircle(cx, cy, rad, ring)
             canvas.drawCircle(cx, cy, rad * 0.66f, ring)
-            canvas.drawLine(cx - rad, cy, cx + rad, cy, ring)
-            canvas.drawLine(cx, cy - rad, cx, cy + rad, ring)
+            canvas.drawLine(cx-rad, cy, cx+rad, cy, ring)
+            canvas.drawLine(cx, cy-rad, cx, cy+rad, ring)
+
             val dx = (r / 30f).coerceIn(-1f, 1f) * rad * 0.66f
             val dy = (p / 30f).coerceIn(-1f, 1f) * rad * 0.66f
-            canvas.drawCircle(cx + dx, cy + dy, 12f, yellow)
+
+            canvas.drawCircle(cx + dx, cy + dy, 10f, yellow)
         }
     }
 }
