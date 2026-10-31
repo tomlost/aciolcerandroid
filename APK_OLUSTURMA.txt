@@ -1,0 +1,12 @@
+DİJİTAL AÇI ÖLÇER – APK OLUŞTURMA
+
+Android Studio kurmadan:
+1. GitHub hesabınıza giriş yapın.
+2. New repository ile yeni bir repository oluşturun.
+3. ZIP içindeki tüm dosyaları (gizli .github klasörü dahil) repository ana dizinine yükleyin.
+4. Actions sekmesinde Android APK Build iş akışını açın.
+5. Run workflow düğmesine basın.
+6. İşlem tamamlanınca Dijital-Aci-Olcer-APK artifact dosyasını indirin.
+7. İndirdiğiniz artifact ZIP dosyasını açın. İçindeki app-debug.apk dosyasını Android telefonunuza gönderip kurun.
+
+Derleme GitHub sunucularında yapılır; bilgisayarınıza Android Studio kurmanız gerekmez.
